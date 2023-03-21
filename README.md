@@ -4,7 +4,7 @@
 3. Fill the details inside the .env file
   - EMAIL: kide.app account email address
   - PASSWORD: kide.app account password
-  - URL: https://kide.app/events/[event number]
+  - URL: `https://kide.app/events/[event number]`
   - MIN_PRICE: the estimate of ticket minimum price
   - MAX_PRICE: the estimate of ticket maximum price
   - MAX_FAILED_ATTEMPTS: the amount of attemts the bot makes before givin up, recommended value 10
