@@ -4,7 +4,6 @@ import time
 import asyncio
 import sys
 import os
-from getpass import getpass
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -118,7 +117,7 @@ async def getProduct(inventoryID, amount, loginToken):
   global saleTime
   global failedAttempts
   
-  fail_tolerance = int(os.getenv('MAX_FAILS_ATTEMPTS'))
+  fail_tolerance = int(os.getenv('MAX_FAILED_ATTEMPTS'))
 
   begins = datetime.now().replace(hour=saleTime.hour, minute=saleTime.minute + 1) #Current time +1 min
   
@@ -133,6 +132,7 @@ async def getProduct(inventoryID, amount, loginToken):
 
   print("Tickets received:", str(quantityReceived))
   print("\nTickets are in the shopping cart for 25 minutes. Login to your account to pay for the tickets and redeem them.")
+  print("https://kide.app/")
     
 def main():
   username = str(os.getenv('EMAIL'))
