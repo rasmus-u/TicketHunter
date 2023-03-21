@@ -1,6 +1,6 @@
 # How to use:
 1. Pull the project to local directory
-2. Rename ´.env-template´ file to ´.env´
+2. Rename `.env-template` file to `.env`
 3. Fill the details inside the .env file
 
 ```
