@@ -37,7 +37,6 @@ def getProductVariants(productID: str):
   domain = baseDomain + productID
   productVariants = []
 
-  #Testing tool
   count = 0  
   product = json.loads(requests.get(url=domain).content)["model"]
   saleTimeRaw = product["product"]["dateSalesFrom"]
@@ -122,7 +121,7 @@ async def getProduct(inventoryID, amount, loginToken):
   begins = datetime.now().replace(hour=saleTime.hour, minute=saleTime.minute + 1) #Current time +1 min
   
 
-  while begins < datetime.now() and quantityReceived < amount and failedAttempts < fail_tolerance:
+  while begins > datetime.now() and quantityReceived < amount and failedAttempts < fail_tolerance:
     firstTask = ()
     for i in list(range(max(1, quantityReceived), amount + 1)):
       task = asyncio.create_task(bombProduct(inventoryID, i, loginToken))
