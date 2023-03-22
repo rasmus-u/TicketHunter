@@ -128,10 +128,10 @@ async def getProduct(inventoryID, amount, loginToken):
   
   fail_tolerance = int(os.getenv('MAX_FAILED_ATTEMPTS'))
 
-  begins = datetime.now().replace(hour=saleTime.hour, minute=saleTime.minute + 1) #Current time +1 min
+  end_time = datetime.now().replace(hour=saleTime.hour, minute=saleTime.minute + 1) #Current time +1 min
   
-
-  while begins > datetime.now() and quantityReceived < amount and failedAttempts < fail_tolerance:
+  # EDIT ON TESTING (< when testing, > when production)
+  while end_time > datetime.now() and quantityReceived < amount and failedAttempts < fail_tolerance:
     firstTask = ()
     for i in list(range(max(1, quantityReceived), amount + 1)):
       task = asyncio.create_task(bombProduct(inventoryID, i, loginToken))
@@ -167,6 +167,11 @@ def main():
   products = parseProductDetails(data)
   (id, amount) = findProductID(products, maxprice, priceMin=minprice)
   asyncio.run(getProduct(id, amount, loginToken))
+
+  with open("statistics.json", "w") as file:
+    ticket_details = {"ticket bought": id, "amount bought": amount}
+    stats = [ticket_details, data]
+    json.dump(stats, file)
 
 main()
 
