@@ -45,13 +45,23 @@ def getProductVariants(productID: str):
   print("Sale begins at", str(saleTime).split(" ")[1])
 
   while len(productVariants) == 0:
-    productVariants = product["variants"]
-    sys.stdout.write('\rTrying to find tickets \\ ')
-    time.sleep(0.1)
-    sys.stdout.flush()
-    sys.stdout.write('\rTrying to find tickets / ')
-    time.sleep(0.1)
-    sys.stdout.flush()
+    if ((saleTime.replace(year=datetime.now().year, day=datetime.now().day, month=datetime.now().month)-datetime.now()).total_seconds() > 80):
+      time.sleep(2)
+      sys.stdout.write('\rWaiting / ')
+      time.sleep(2)
+      sys.stdout.write('\rWaiting - ')
+      time.sleep(2)
+      sys.stdout.write('\rWaiting \\ ')
+      time.sleep(2)
+      sys.stdout.write('\rWaiting | ')
+    else:
+      productVariants = json.loads(requests.get(url=domain).content)["model"]["variants"]
+      sys.stdout.write('\rTrying to find tickets \\ ')
+      time.sleep(0.1)
+      sys.stdout.flush()
+      sys.stdout.write('\rTrying to find tickets / ')
+      time.sleep(0.1)
+      sys.stdout.flush()
     
 
   print("Tickets found on page")
