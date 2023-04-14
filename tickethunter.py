@@ -20,11 +20,18 @@ failedAttempts = 0
 # 4. Go through the products and decide which to buy based on parameters and save inventoryID
 # 5. Spam GET to https://api.kide.app/api/reservations with correct inventoryID
 
-def getAuth(user, passw):
+def getAuth(credentials):
   domain = "https://auth.kide.app/oauth2/token"
-  authData = "client_id=56d9cbe22a58432b97c287eadda040df&grant_type=password&password={}&rememberMe=true&username={}".format(passw, user)
-  token = json.loads(requests.post(url=domain, data=authData).content)["access_token"]
-  return {"authorization": "Bearer {}".format(token)}
+  authDetails = []
+  for credential in credentials:
+    authData = "client_id=56d9cbe22a58432b97c287eadda040df&grant_type=password&password={}&rememberMe=true&username={}".format(credential[1], credential[0])
+    try:
+      token = json.loads(requests.post(url=domain, data=authData).content)["access_token"]
+      authDetails.append(( str(credential[0]), {"authorization": "Bearer {}".format(token)} ))
+    except:
+      print('Error with account', str(credential[0]))
+
+  return authDetails
 
 def getDomainID(url: str):
   return url.split("/")[-1]
@@ -35,9 +42,8 @@ def getProductVariants(productID: str):
 
   baseDomain = "https://api.kide.app/api/products/"
   domain = baseDomain + productID
-  productVariants = []
+  productVariants = json.loads(requests.get(url=domain).content)["model"]["variants"]
 
-  count = 0  
   product = json.loads(requests.get(url=domain).content)["model"]
   saleTimeRaw = product["product"]["dateSalesFrom"]
   saleTime = datetime.strptime(saleTimeRaw.split("+")[0].split("T")[1], '%H:%M:%S')
@@ -45,7 +51,8 @@ def getProductVariants(productID: str):
   print("Sale begins at", str(saleTime).split(" ")[1])
 
   while len(productVariants) == 0:
-    if ((saleTime.replace(year=datetime.now().year, day=datetime.now().day, month=datetime.now().month)-datetime.now()).total_seconds() > 80):
+    time_difference = (saleTime.replace(year=datetime.now().year, day=datetime.now().day, month=datetime.now().month)-datetime.now()).total_seconds()
+    if (time_difference > 80):
       time.sleep(2)
       sys.stdout.write('\rWaiting / ')
       time.sleep(2)
@@ -56,12 +63,16 @@ def getProductVariants(productID: str):
       sys.stdout.write('\rWaiting | ')
     else:
       productVariants = json.loads(requests.get(url=domain).content)["model"]["variants"]
-      sys.stdout.write('\rTrying to find tickets \\ ')
-      time.sleep(0.1)
-      sys.stdout.flush()
-      sys.stdout.write('\rTrying to find tickets / ')
-      time.sleep(0.1)
-      sys.stdout.flush()
+      if time_difference > 2:
+        sys.stdout.write('\rTrying to find tickets / ')
+        time.sleep(0.1)
+        sys.stdout.write('\rTrying to find tickets - ')
+        time.sleep(0.1)
+        sys.stdout.write('\rTrying to find tickets \\ ')
+        time.sleep(0.1)
+        sys.stdout.write('\rTrying to find tickets | ')
+      else:
+        time.sleep(0.1)
     
 
   print("Tickets found on page")
@@ -69,8 +80,9 @@ def getProductVariants(productID: str):
 
 def parseProductDetails(productData):
   items = []
+  containsUntransferableItems = False
   for product in productData:
-    if not product["isProductVariantMarkedAsOutOfStock"] and product["isProductVariantTransferable"] and not product["isProductVariantHakaAuthenticationRequired"]:
+    if not product["isProductVariantMarkedAsOutOfStock"] and not product["isProductVariantHakaAuthenticationRequired"]:
       item = {
         "inventoryID": product["inventoryId"],
         "name": product["name"],
@@ -78,6 +90,10 @@ def parseProductDetails(productData):
         "max_amount": min(product["availability"], product["productVariantMaximumItemQuantityPerUser"], product["productVariantMaximumReservableQuantity"])
       }
       items.append(item)
+    containsUntransferableItems = product["isProductVariantTransferable"]
+  
+  if containsUntransferableItems: print("Warning! Some of the items are untransferable between accounts. Beware when paying for them!")
+
   return items
 
 def findProductID(productList, priceMax, priceMin=0, name=None, sortByCheapest=False):
@@ -95,6 +111,38 @@ def findProductID(productList, priceMax, priceMin=0, name=None, sortByCheapest=F
     print("Ticket found")
     return (filteredProducts[0]["inventoryID"], filteredProducts[0]["max_amount"])
   
+async def getProduct(inventoryID, amount, loginTokenList):
+
+  global saleTime
+  global failedAttempts
+  global quantityReceived
+  
+  fail_tolerance = int(os.getenv('MAX_FAILED_ATTEMPTS'))
+
+  end_time = datetime.now().replace(hour=saleTime.hour, minute=saleTime.minute + 1) #Current time +1 min
+  
+  dev_mode = True if (os.getenv('DEVELOPER_MODE')).lower() == 'true' else False
+  
+  for credentials in loginTokenList:
+    quantityReceived = 0
+    failedAttempts = 0
+
+    print("\nBuying tickets for", str(credentials[0]))
+    
+    # EDIT ON TESTING (< when testing, > when production)
+    while (end_time > datetime.now() or dev_mode) and quantityReceived < amount and failedAttempts < fail_tolerance:
+      firstTask = ()
+      for i in list(range(max(1, quantityReceived), amount + 1)):
+        task = asyncio.create_task(bombProduct(inventoryID, i, credentials[1]))
+        if i == max(1, quantityReceived): #i is the first element
+          firstTask = task
+      await firstTask
+    print("Received", str(quantityReceived), "for account", str(credentials[0]))
+    
+
+  print("\nTickets are in the shopping cart for 25 minutes. Login to your account to pay for the tickets and redeem them.")
+  print("https://kide.app/")
+
 async def bombProduct(inventoryID, amount, loginToken):
 
   global quantityReceived
@@ -121,39 +169,25 @@ async def bombProduct(inventoryID, amount, loginToken):
     print("Trying ticket amount", str(amount), " - failed")
     failedAttempts += 1
   
-async def getProduct(inventoryID, amount, loginToken):
-
-  global saleTime
-  global failedAttempts
-  
-  fail_tolerance = int(os.getenv('MAX_FAILED_ATTEMPTS'))
-
-  end_time = datetime.now().replace(hour=saleTime.hour, minute=saleTime.minute + 1) #Current time +1 min
-  
-  # EDIT ON TESTING (< when testing, > when production)
-  while end_time > datetime.now() and quantityReceived < amount and failedAttempts < fail_tolerance:
-    firstTask = ()
-    for i in list(range(max(1, quantityReceived), amount + 1)):
-      task = asyncio.create_task(bombProduct(inventoryID, i, loginToken))
-      if i == max(1, quantityReceived): #i is the first element
-        firstTask = task
-    await firstTask
-
-  print("Tickets received:", str(quantityReceived))
-  print("\nTickets are in the shopping cart for 25 minutes. Login to your account to pay for the tickets and redeem them.")
-  print("https://kide.app/")
     
 def main():
-  username = str(os.getenv('EMAIL'))
-  password = str(os.getenv('PASSWORD'))
+  creds = [( str(os.getenv('EMAIL')), str(os.getenv('PASSWORD')) )]
+
   url = str(os.getenv('URL'))
+
+  #If any other credentials provided
+  if str(os.getenv('EMAIL2')) != '' or str(os.getenv('EMAIL2')) != None:
+    creds.append( (str(os.getenv('EMAIL2')), os.getenv('PASSWORD2')) )
+
+  if str(os.getenv('EMAIL3')) != '' or str(os.getenv('EMAIL3')) != None:
+    creds.append( (str(os.getenv('EMAIL3')), os.getenv('PASSWORD3')) )
 
   print("\n\nStarting the ticket hunter software\n\n\n")
 
   DomainID = getDomainID(url)
   print("Domain found\nTrying to login to Kide.App")
   
-  loginToken = getAuth(username, password)
+  loginTokenList = getAuth(creds)
   print("Login successful!")
 
   
@@ -166,7 +200,7 @@ def main():
   data = getProductVariants(DomainID)
   products = parseProductDetails(data)
   (id, amount) = findProductID(products, maxprice, priceMin=minprice)
-  asyncio.run(getProduct(id, amount, loginToken))
+  asyncio.run(getProduct(id, amount, loginTokenList))
 
   with open("statistics.json", "w") as file:
     ticket_details = {"ticket bought": id, "amount bought": amount}
@@ -175,4 +209,6 @@ def main():
 
 main()
 
-
+# Make the bot more aggressive by not trying to spam buy when availability doesn't allow it
+# Successfully buying ticket gives info on current availability, first buy one and then try to buy 50% of the availability progressively
+# Make this a rage-mode option
