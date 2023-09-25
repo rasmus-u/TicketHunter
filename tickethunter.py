@@ -24,12 +24,13 @@ def getAuth(credentials):
   domain = "https://auth.kide.app/oauth2/token"
   authDetails = []
   for credential in credentials:
-    authData = "client_id=56d9cbe22a58432b97c287eadda040df&grant_type=password&password={}&rememberMe=true&username={}".format(credential[1], credential[0])
-    try:
-      token = json.loads(requests.post(url=domain, data=authData).content)["access_token"]
-      authDetails.append(( str(credential[0]), {"authorization": "Bearer {}".format(token)} ))
-    except:
-      print('Error with account', str(credential[0]))
+    if credential:
+      authData = "client_id=56d9cbe22a58432b97c287eadda040df&grant_type=password&password={}&rememberMe=true&username={}".format(credential[1], credential[0])
+      try:
+        token = json.loads(requests.post(url=domain, data=authData).content)["access_token"]
+        authDetails.append(( str(credential[0]), {"authorization": "Bearer {}".format(token)} ))
+      except:
+        print('Error with account', str(credential[0]))
 
   return authDetails
 
@@ -82,7 +83,17 @@ def parseProductDetails(productData):
   items = []
   containsUntransferableItems = False
   for product in productData:
-    if not product["isProductVariantMarkedAsOutOfStock"] and not product["isProductVariantHakaAuthenticationRequired"]:
+    # line "not product["isProductVariantMarkedAsOutOfStock"] and" removed from the if after update
+    try:
+      if not product["isProductVariantHakaAuthenticationRequired"] and not product["isProductVariantMembershipRequired"]:
+        item = {
+          "inventoryID": product["inventoryId"],
+          "name": product["name"],
+          "price": product["pricePerItem"], #marked as 100x the actual price in euros
+          "max_amount": min(product["availability"], product["productVariantMaximumItemQuantityPerUser"], product["productVariantMaximumReservableQuantity"])
+        }
+        items.append(item)
+    except: # If items are missing labels for Haka authentication or membership (this is just in case so sale doesn't fail)
       item = {
         "inventoryID": product["inventoryId"],
         "name": product["name"],
