@@ -39,10 +39,6 @@ MAX_FAILED_ATTEMPTS=
   - `MIN_PRICE`: the estimate of ticket minimum price
   - `MAX_PRICE`: the estimate of ticket maximum price
   - `MAX_FAILED_ATTEMPTS`: the amount of attemts the bot makes before giving up, recommended value: 10
-5. Use the virtual environment set up earlier (run ```source venv/bin/activate``` or ```venv\Scripts\activate``` if you have already closed this command 
-line window)
-Run the bot with the command ```python tickethunter.py```
+5. Run the bot with the command ```python tickethunter.py```
 6. After completion, the tickets can be redeemed by logging into your account
-
-### There are some known bugs with the bot but the core functionality works, the bot buys the tickets very effectively
 
