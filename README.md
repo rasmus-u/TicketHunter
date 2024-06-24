@@ -1,9 +1,14 @@
+This repo is for educational and demonstrational purposes only. It is supposed to demonstrate how easily the Kide.app ticket purchasing platform can be exploited with bot buying to allow users to gain unfair advantage in getting high demand tickets quickly. The system in general is very easy to exploit due to open API endpoints for refreshing tickets, choosing and adding to the shopping cart. Please use at your own risk!
+
+EDIT Jun 24th 2024: 
+This code is deprecated and doesn't work anymore on the most recent version of Kide.app due to improved human verification and anti-bot measures. Good job Kide.app for fixing the issues!
+
 # How to use:
 1. Clone the project to local directory with\
 `git clone git@github.com:rasmus-u/TicketHunter.git`
 3. To install dependencies in an virtual envinronment run the following commands:
 
-On Mac:
+On Mac/Linux:
   ```
   python -m venv venv
   source venv/bin/activate
